@@ -1,0 +1,109 @@
+services:
+  dsh:
+    image: dsh-runtime:1.0.0
+    container_name: deepseek-harness
+
+    restart: unless-stopped
+    pull_policy: never
+
+    # Invoke via sh because Windows bind mounts often drop the executable bit.
+    entrypoint:
+      - /usr/bin/tini
+      - --
+      - /bin/sh
+      - /usr/local/bin/dsh-entrypoint.sh
+
+    environment:
+      DSH_HOME: /data
+
+      # Disable telemetry
+      DSH_TELEMETRY_DISABLED: "1"
+      DSH_TELEMETRY_MODE: "DISABLED"
+
+      # Mọi HTTP/HTTPS request phải qua Squid
+      HTTP_PROXY: http://egress-proxy:3128
+      HTTPS_PROXY: http://egress-proxy:3128
+      http_proxy: http://egress-proxy:3128
+      https_proxy: http://egress-proxy:3128
+
+      NO_PROXY: localhost,127.0.0.1,egress-proxy
+      no_proxy: localhost,127.0.0.1,egress-proxy
+
+    volumes:
+      - ./data:/data
+      - ./workspace:/workspace
+      - ./deepseek-harness:/source/dsh:ro
+      - ./entrypoint.sh:/usr/local/bin/dsh-entrypoint.sh:ro
+      - dsh-credentials:/credentials
+
+    networks:
+      - sandbox
+
+    depends_on:
+      - egress-proxy
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - SETUID
+      - SETGID
+
+  web-gateway:
+    image: alpine/socat:latest
+    container_name: dsh-web-gateway
+
+    restart: unless-stopped
+
+    command:
+      - "TCP-LISTEN:3080,fork,reuseaddr"
+      - "TCP:deepseek-harness:3081"
+
+    ports:
+      - "127.0.0.1:3080:3080"
+
+    networks:
+      - sandbox
+      - frontend
+
+    depends_on:
+      - dsh
+
+  egress-proxy:
+    image: ubuntu/squid:latest
+    container_name: dsh-egress-proxy
+
+    restart: unless-stopped
+
+    volumes:
+      - ./proxy/squid.conf:/etc/squid/squid.conf:ro
+      - ./proxy/allow-domains.txt:/etc/squid/allow-domains.txt:ro
+
+    networks:
+      - sandbox
+      - internet
+
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  dsh-credentials:
+
+networks:
+
+  # DSH chỉ nằm trong network này.
+  # internal=true => không có direct Internet.
+  sandbox:
+    internal: true
+
+  frontend:
+    driver: bridge
+
+  # Chỉ Squid được join network có Internet.
+  internet:
+    driver: bridge

@@ -1,0 +1,12 @@
+# DeepSeek API
+api.deepseek.com
+
+# Local/company gateway
+llm.company.internal
+
+# GitHub nếu agent thật sự cần
+github.com
+api.github.com
+
+# npm nếu runtime cần tải package
+registry.npmjs.org

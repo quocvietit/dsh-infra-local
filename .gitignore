@@ -1,0 +1,29 @@
+# Runtime DSH_HOME (bind-mounted as /data)
+data/.credentials.yaml
+data/.env
+data/attachments/
+data/sessions/
+data/storages/
+data/settings.yaml
+data/profiles/**/node_modules/
+data/profiles/web/.dsh-module-fallback/
+data/profiles/web/cordis.yml
+data/profiles/web/package.json
+data/profiles/web/pnpm-workspace.yaml
+
+# Session workspace bind mount
+workspace/
+
+# Nested harness clone (own git remote)
+deepseek-harness/
+
+# Local scratch
+script.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.vscode/
+.idea/

@@ -1,0 +1,18 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: skill-badge
+  disabled: false
+
+# Hide the native DeepSeek Official adapter from Settings → Models.
+- id: llm-deepseek
+  disabled: true
+
+# Disable DeepSeek web search (plugin card + search provider).
+- id: web-search-deepseek
+  disabled: true
+
+# Presets still mount tool-web for fetch; do not register web_search.
+- id: tool-web
+  config:
+    search: false
