@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "tasks"
+  ],
+  "properties": {
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "requirementIds",
+          "title",
+          "description",
+          "changes",
+          "testRequirements"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "requirementIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array"
+          },
+          "symbols": {
+            "type": "array"
+          },
+          "changes": {
+            "type": "array"
+          },
+          "dependsOn": {
+            "type": "array"
+          },
+          "skill": {
+            "type": "string"
+          },
+          "workstreams": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "implement",
+                "unit-test",
+                "review"
+              ]
+            }
+          },
+          "risk": {
+            "type": "string"
+          },
+          "testRequirements": {
+            "type": "array"
+          },
+          "doneCriteria": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "array"
+    }
+  }
+}

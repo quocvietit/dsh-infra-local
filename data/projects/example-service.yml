@@ -1,0 +1,18 @@
+project:
+  id: example-service
+  sourcePath: /workspace/example-service
+  language: java
+  framework: spring-boot
+  build:
+    command: ./mvnw -q -DskipTests compile
+  unitTest:
+    command: ./mvnw test
+  integrationTest:
+    command: ./mvnw verify -Pintegration
+  tools:
+    codegraph: false
+    ponytail: false
+  policy:
+    sourceWrite: false
+    maxTaskReviewRetries: 3
+    maxCodeReviewRetries: 3

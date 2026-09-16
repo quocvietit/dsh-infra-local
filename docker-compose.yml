@@ -1,26 +1,48 @@
 services:
   dsh:
-    image: dsh-runtime:1.0.0
+    image: ${DSH_IMAGE:-dsh-runtime:1.2.1}
+
+    build:
+      context: .
+
+      dockerfile: Dockerfile
+
+      args:
+        DSH_COMMIT_HASH: ${DSH_COMMIT_HASH:-0000000}
+
     container_name: deepseek-harness
 
     restart: unless-stopped
+
     pull_policy: never
 
-    # Invoke via sh because Windows bind mounts often drop the executable bit.
     entrypoint:
       - /usr/bin/tini
+
       - --
+
       - /bin/sh
+
       - /usr/local/bin/dsh-entrypoint.sh
 
     environment:
       DSH_HOME: /data
 
-      # Disable telemetry
       DSH_TELEMETRY_DISABLED: "1"
+
       DSH_TELEMETRY_MODE: "DISABLED"
 
-      # Mọi HTTP/HTTPS request phải qua Squid
+      DSH_HOST_OPEN_QUEUE: /data/.host-open-queue
+
+      DSH_HOST_PATH_MAP: ${DSH_HOST_PATH_MAP:-}
+
+      # 0 = run baked /opt/dsh from the image (deploy). 1 = overlay host source (dev compose).
+
+      DSH_SOURCE_OVERLAY: ${DSH_SOURCE_OVERLAY:-0}
+
+      # 1 = link Vision Toolkit into the web profile. 0 = skip.
+      DSH_VISION_TOOLKIT: ${DSH_VISION_TOOLKIT:-1}
+
       HTTP_PROXY: http://egress-proxy:3128
       HTTPS_PROXY: http://egress-proxy:3128
       http_proxy: http://egress-proxy:3128
@@ -32,8 +54,8 @@ services:
     volumes:
       - ./data:/data
       - ./workspace:/workspace
-      - ./deepseek-harness:/source/dsh:ro
       - ./entrypoint.sh:/usr/local/bin/dsh-entrypoint.sh:ro
+      - ./hide-vision-updates.mjs:/usr/local/bin/dsh-hide-vision-updates.mjs:ro
       - dsh-credentials:/credentials
 
     networks:
@@ -56,6 +78,7 @@ services:
 
   web-gateway:
     image: alpine/socat:latest
+
     container_name: dsh-web-gateway
 
     restart: unless-stopped

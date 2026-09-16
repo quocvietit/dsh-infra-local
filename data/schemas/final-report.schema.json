@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "decision",
+    "gates",
+    "summary"
+  ],
+  "properties": {
+    "decision": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "HUMAN_REVIEW"
+      ]
+    },
+    "requirements": {
+      "type": "object"
+    },
+    "gates": {
+      "type": "object"
+    },
+    "traceability": {
+      "type": "array"
+    },
+    "remainingRisks": {
+      "type": "array"
+    },
+    "summary": {
+      "type": "string"
+    }
+  }
+}

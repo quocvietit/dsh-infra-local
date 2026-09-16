@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "testCases"
+  ],
+  "properties": {
+    "testCases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "requirementIds",
+          "type",
+          "title",
+          "steps",
+          "expectedResults"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "requirementIds": {
+            "type": "array"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "preconditions": {
+            "type": "array"
+          },
+          "steps": {
+            "type": "array"
+          },
+          "expectedResults": {
+            "type": "array"
+          },
+          "automationCandidate": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

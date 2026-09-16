@@ -1,18 +1,32 @@
-# Your patch layer for this dsh profile, applied after every bundle layer:
-# a top-level YAML array of loader patch entries (id-targeted config
-# overrides, disables, and insert lists; `!!js` expressions allowed).
-- id: skill-badge
-  disabled: false
+# Profile overlay: deployment knobs only. Runtime lives in the image.
+# Later rows with the same `id` replace earlier bundle/preset rows.
+# Restart: docker compose restart dsh
 
-# Hide the native DeepSeek Official adapter from Settings → Models.
+# ── LLM / search ────────────────────────────────────────────────────────────
+# Hide the shipped DeepSeek Official adapter in Settings → Models.
 - id: llm-deepseek
   disabled: true
 
-# Disable DeepSeek web search (plugin card + search provider).
+# Disable DeepSeek web_search. Set disabled: false to turn search back on.
 - id: web-search-deepseek
   disabled: true
 
-# Presets still mount tool-web for fetch; do not register web_search.
+# Presets still mount tool-web for fetch; search: false keeps web_search off.
 - id: tool-web
   config:
     search: false
+
+# Skill badges in chat. disabled: true to hide.
+- id: skill-badge
+  disabled: false
+
+# ── Workflow (optional) ─────────────────────────────────────────────────────
+# Uncomment both rows to turn off workflow on this deployment:
+# - id: workflow-ptc
+#   disabled: true
+# - id: tool-workflow
+#   disabled: true
+
+# ── Schedule UI (shipped disabled in web bundle) ────────────────────────────
+# - id: ui-schedule
+#   disabled: false

@@ -1,0 +1,8 @@
+# Overlay host harness onto the running container. Prod compose stays overlay=0.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+services:
+  dsh:
+    environment:
+      DSH_SOURCE_OVERLAY: "1"
+    volumes:
+      - ./deepseek-harness:/source/dsh:ro

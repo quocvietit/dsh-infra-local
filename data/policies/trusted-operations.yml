@@ -1,0 +1,45 @@
+# Operations auto-approved without a prompt (plugin is built into the image).
+# Override lists here; omit the file to use image defaults.
+# Each bash call is a fresh shell: do not rely on a previous `cd`.
+
+filesystemAllow:
+  - read
+  - glob
+  - grep
+
+pathAllowPrefixes:
+  - /workspace
+  - /data/runs
+  - /data/policies
+  - /data/projects
+  - /data/schemas
+  - /data/skills
+  - /data/workflows
+  - /home/node
+
+bashAllow:
+  - ls
+  - dir
+  - pwd
+  - cat
+  - head
+  - tail
+  - find
+  - wc
+  - file
+  - stat
+  - python
+  - python3
+  - pip
+  - pip3
+
+bashDeny:
+  - sudo
+  - git push
+  - curl
+  - wget
+  - chmod
+  - chown
+  - rm -rf /
+  - mkfs
+  - dd if=

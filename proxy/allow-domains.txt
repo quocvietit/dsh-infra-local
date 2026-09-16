@@ -1,5 +1,6 @@
 # DeepSeek API
 api.deepseek.com
+api.openai.com
 
 # Local/company gateway
 llm.company.internal
@@ -10,3 +11,9 @@ api.github.com
 
 # npm nếu runtime cần tải package
 registry.npmjs.org
+
+# Vision toolkit: PyPI / Tencent mirror (first-run venv fallback)
+pypi.org
+files.pythonhosted.org
+pypi.python.org
+mirrors.cloud.tencent.com
