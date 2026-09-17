@@ -1,7 +1,6 @@
 #!/bin/sh
 set -e
 
-CREDENTIAL_FILE="/credentials/.credentials.yaml"
 TARGET_LINK="/data/.credentials.yaml"
 
 # Image files are `dsh:dsh`; the Node base image also has user `node`.
@@ -84,25 +83,27 @@ fi
 # nên cho phép container user ghi vào các file config/state.
 chmod -R a+rwX /data 2>/dev/null || true
 
+# credentials-local refuses group/other bits. The recursive chmod above would
+# otherwise make Models API keys unloadable on the next boot.
+if [ -f "$TARGET_LINK" ]; then
+  chmod 600 "$TARGET_LINK" 2>/dev/null || true
+  chown "$APP_USER:$APP_USER" "$TARGET_LINK" 2>/dev/null || true
+fi
+
 
 # ==================================================
 # Secure credentials
 # ==================================================
+# Keep `$DSH_HOME/.credentials.yaml` on the /data bind mount. The old flow
+# deleted that file and `ln -s` onto a Linux named volume; Docker Desktop's
+# Windows bind mount does not create a real symlink, so every Models key was
+# wiped on restart.
 
-if [ ! -f "$CREDENTIAL_FILE" ]; then
-  touch "$CREDENTIAL_FILE"
+if [ ! -f "$TARGET_LINK" ]; then
+  touch "$TARGET_LINK" || true
+  chmod 600 "$TARGET_LINK" 2>/dev/null || true
+  chown "$APP_USER:$APP_USER" "$TARGET_LINK" 2>/dev/null || true
 fi
-
-chown "$APP_USER:$APP_USER" "$CREDENTIAL_FILE"
-chmod 600 "$CREDENTIAL_FILE"
-
-# Xóa credentials cũ nằm trên Windows bind mount
-if [ -e "$TARGET_LINK" ] || [ -L "$TARGET_LINK" ]; then
-  rm -f "$TARGET_LINK"
-fi
-
-# Link sang credential nằm trong Linux named volume
-ln -s "$CREDENTIAL_FILE" "$TARGET_LINK"
 
 
 # ==================================================
@@ -406,4 +407,9 @@ socat TCP-LISTEN:3081,fork,reuseaddr TCP:127.0.0.1:3080 &
 echo "dsh-entrypoint: starting as ${APP_USER}"
 pnpm --dir /opt/dsh --filter @deepseek-ai/dsh-client-ui-conversation bundle
 pnpm --dir /opt/dsh --filter @deepseek-ai/dsh-client-ui-workflow-run bundle || true
-exec su -s /bin/sh "$APP_USER" -c 'pnpm --dir /opt/dsh dsh web --no-open'
+# `su` without --preserve-environment drops compose/.env keys (OPENAI_API_KEY).
+if [ -z "${HOME:-}" ] || [ "$HOME" = / ] || [ "$HOME" = /root ]; then
+  HOME=$(getent passwd "$APP_USER" | cut -d: -f6)
+fi
+export HOME USER="$APP_USER" LOGNAME="$APP_USER"
+exec su --preserve-environment -s /bin/sh "$APP_USER" -c 'pnpm --dir /opt/dsh dsh web --no-open'

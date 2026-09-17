@@ -43,7 +43,7 @@ UI chỉ bind localhost: [http://127.0.0.1:3080](http://127.0.0.1:3080) — URL 
 - **web-gateway** nằm `sandbox` + `frontend` để publish `127.0.0.1:3080` (DSH không join `internet`).
 - **egress-proxy** là hop duy nhất ra ngoài; domain trong `proxy/allow-domains.txt`.
 - Runtime Harness nằm **trong image** `/opt/dsh`. Không mount `deepseek-harness` khi deploy (`DSH_SOURCE_OVERLAY=0`).
-- Credential: named volume `dsh-credentials` → `/credentials` (mode 600), symlink `/data/.credentials.yaml`.
+- Credential: `data/.credentials.yaml` trên bind mount `/data` (gitignore, mode 600). Entrypoint không xóa file khi restart.
 - Browser Use: Chromium trong image; page traffic `--proxy-server` → Squid (xem BUILD.md).
 
 Overlay source host chỉ khi dev: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`.
@@ -63,7 +63,8 @@ dsh-docker/
 ├── security-test.ps1
 ├── .env.example               # copy thành .env (không commit)
 ├── data/                      # DSH_HOME: profile, policy, skills
-├── workspace/                 # project agent được sửa
+├── workspace/                 # mặc định bind → /workspace (đổi bằng DSH_WORKSPACE_HOST / override.yml)
+├── docker-compose.override.example.yml  # thêm folder/ổ khác vào /workspace/...
 ├── proxy/                     # squid.conf + allow-domains.txt
 └── deepseek-harness/          # chỉ cần trên máy BUILD
 ```

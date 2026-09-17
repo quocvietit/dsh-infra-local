@@ -1,0 +1,15 @@
+# Extra host folders inside the container (other drive, split repos).
+# Copy to docker-compose.override.yml — Compose merges it automatically.
+# Do not commit override.yml (machine-local paths).
+#
+# Docker Desktop → Settings → Resources → File sharing: allow that drive.
+# After copy: docker compose up -d
+#
+# PATH_MAP in .env must include each extra target (longest prefix wins), e.g.
+# DSH_HOST_PATH_MAP=/workspace=D:/project/dsh-docker/workspace;/workspace/app=E:/code/app;/data=D:/project/dsh-docker/data
+
+services:
+  dsh:
+    volumes:
+      - E:/code/app:/workspace/app
+      # - D:/libs/shared:/workspace/shared

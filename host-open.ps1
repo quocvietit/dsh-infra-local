@@ -10,37 +10,52 @@ function Open-HostPath {
   param([string]$Path, [string]$Action)
   if (-not $Path) { return }
   $normalized = $Path -replace '/', '\'
-  if ($Action -eq 'reveal' -and (Test-Path -LiteralPath $normalized)) {
-    Start-Process explorer.exe -ArgumentList @('/select,', $normalized)
+  if (-not (Test-Path -LiteralPath $normalized)) {
+    Write-Host "dsh-host-open: path not found: $normalized"
     return
   }
-  if (Test-Path -LiteralPath $normalized) {
-    try {
-      Invoke-Item -LiteralPath $normalized
-      return
-    } catch {
-      Start-Process notepad.exe -ArgumentList @($normalized)
-      return
-    }
+  if ($Action -eq 'reveal') {
+    Start-Process explorer.exe -ArgumentList @('/select,', $normalized)
+    Write-Host "dsh-host-open: revealed $normalized"
+    return
   }
-  Write-Host "dsh-host-open: path not found: $normalized"
+  $ext = [System.IO.Path]::GetExtension($normalized).ToLowerInvariant()
+  if ($ext -in @('.yaml', '.yml', '.json', '.txt', '.md', '.env', '.toml')) {
+    Start-Process notepad.exe -ArgumentList @($normalized)
+    Write-Host "dsh-host-open: notepad $normalized"
+    return
+  }
+  try {
+    Invoke-Item -LiteralPath $normalized
+    Write-Host "dsh-host-open: opened $normalized"
+  } catch {
+    Start-Process notepad.exe -ArgumentList @($normalized)
+    Write-Host "dsh-host-open: notepad fallback $normalized"
+  }
 }
 
-while ($true) {
-  if (Test-Path -LiteralPath $queue) {
-    try {
-      $raw = Get-Content -LiteralPath $queue -Raw -ErrorAction Stop
-      Remove-Item -LiteralPath $queue -Force -ErrorAction SilentlyContinue
-      if ($raw) {
-        foreach ($line in ($raw -split '\r?\n')) {
-          if (-not $line.Trim()) { continue }
-          $body = $line | ConvertFrom-Json
-          Open-HostPath -Path ([string]$body.path) -Action ([string]$body.action)
-        }
+function Drain-Queue {
+  if (-not (Test-Path -LiteralPath $queue)) { return }
+  try {
+    $raw = Get-Content -LiteralPath $queue -Raw -ErrorAction Stop
+    Remove-Item -LiteralPath $queue -Force -ErrorAction SilentlyContinue
+    if (-not $raw) { return }
+    foreach ($line in ($raw -split '\r?\n')) {
+      if (-not $line.Trim()) { continue }
+      try {
+        $body = $line | ConvertFrom-Json
+        Open-HostPath -Path ([string]$body.path) -Action ([string]$body.action)
+      } catch {
+        Write-Host "dsh-host-open: bad queue line: $line"
       }
-    } catch {
-      Start-Sleep -Milliseconds 400
     }
+  } catch {
+    # File may be mid-write from the container.
   }
+}
+
+Drain-Queue
+while ($true) {
+  Drain-Queue
   Start-Sleep -Milliseconds 400
 }

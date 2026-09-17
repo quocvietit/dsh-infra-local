@@ -25,6 +25,13 @@ services:
 
       - /usr/local/bin/dsh-entrypoint.sh
 
+    # Compose interpolates `.env` for ${VAR} below. `env_file` also injects
+    # those keys into the container. `docker compose restart` does NOT reread
+    # `.env` — use `docker compose up -d` (recreate) after edits.
+    env_file:
+      - path: .env
+        required: false
+
     environment:
       DSH_HOME: /data
 
@@ -34,11 +41,13 @@ services:
 
       DSH_HOST_OPEN_QUEUE: /data/.host-open-queue
 
-      DSH_HOST_PATH_MAP: ${DSH_HOST_PATH_MAP:-}
+      # Quoted: PATH_MAP contains `:` and `;` which YAML would otherwise split.
+      # Host-open: longest prefix wins. Extra binds must be listed here too.
+      DSH_HOST_PATH_MAP: "${DSH_HOST_PATH_MAP:-/workspace=${DSH_WORKSPACE_HOST:-${DSH_HOST_ROOT}/workspace};/data=${DSH_HOST_ROOT}/data}"
 
       # 0 = run baked /opt/dsh from the image (deploy). 1 = overlay host source (dev compose).
 
-      DSH_SOURCE_OVERLAY: ${DSH_SOURCE_OVERLAY:-0}
+      DSH_SOURCE_OVERLAY: "${DSH_SOURCE_OVERLAY:-0}"
 
       HTTP_PROXY: http://egress-proxy:3128
       HTTPS_PROXY: http://egress-proxy:3128
@@ -50,7 +59,9 @@ services:
 
     volumes:
       - ./data:/data
-      - ./workspace:/workspace
+      # Other disk / folder: set DSH_WORKSPACE_HOST in .env (absolute, forward slashes).
+      # More folders: docker-compose.override.yml (see docker-compose.override.example.yml).
+      - ${DSH_WORKSPACE_HOST:-./workspace}:/workspace
       - ./entrypoint.sh:/usr/local/bin/dsh-entrypoint.sh:ro
       - dsh-credentials:/credentials
 
@@ -98,6 +109,11 @@ services:
     container_name: dsh-egress-proxy
 
     restart: unless-stopped
+
+    # Docker embedded DNS only (host/company resolvers). IPv6 off avoids 503 hangs.
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
 
     volumes:
       - ./proxy/squid.conf:/etc/squid/squid.conf:ro

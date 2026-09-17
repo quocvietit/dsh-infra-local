@@ -67,9 +67,10 @@ Sửa `.env` (Windows: dùng `/`, đúng ổ máy này):
 ```env
 DSH_IMAGE=vietvqworkspace/dsh-web:1.2.1
 DSH_HOST_ROOT=D:/path/tren/may-nay/dsh-docker
-DSH_HOST_PATH_MAP=/workspace=D:/path/tren/may-nay/dsh-docker/workspace;/data=D:/path/tren/may-nay/dsh-docker/data
 DSH_SOURCE_OVERLAY=0
 ```
+
+Code **không** nằm trong `./workspace` — xem mục 3.1.
 
 ```powershell
 docker pull vietvqworkspace/dsh-web:1.2.1
@@ -80,6 +81,39 @@ docker compose logs dsh | Select-String "dsh web:"
 ```
 
 Mở đúng URL in ra (có token). Hard-refresh trình duyệt nếu UI cũ.
+
+### 3.1 Workspace trên ổ/thư mục khác
+
+Agent chỉ thấy path **trong container** (`/workspace/...`). Bind mount quyết định folder Windows.
+
+**Cả `/workspace` trỏ sang ổ khác** — `.env`:
+
+```env
+DSH_WORKSPACE_HOST=E:/code
+DSH_HOST_PATH_MAP=/workspace=E:/code;/data=D:/path/tren/may-nay/dsh-docker/data
+```
+
+`DSH_HOST_PATH_MAP` có thể bỏ nếu chỉ đổi workspace: compose mặc định `/workspace=${DSH_WORKSPACE_HOST}` và `/data=${DSH_HOST_ROOT}/data`.
+
+**Thêm thư mục** (ổ D + ổ E, repo rời) — copy `docker-compose.override.example.yml` → `docker-compose.override.yml`:
+
+```yaml
+services:
+  dsh:
+    volumes:
+      - E:/code/app:/workspace/app
+      - D:/libs/shared:/workspace/shared
+```
+
+Kèm PATH_MAP (prefix dài hơn thắng khi Open on host):
+
+```env
+DSH_HOST_PATH_MAP=/workspace=D:/path/dsh-docker/workspace;/workspace/app=E:/code/app;/workspace/shared=D:/libs/shared;/data=D:/path/dsh-docker/data
+```
+
+Policy `pathAllowPrefixes: /workspace` đã cover mọi mount dưới `/workspace/...`.
+
+Docker Desktop phải **share** ổ đó. Không mount `/`, `C:/Users/.../.ssh`, cloud keys. Sau khi sửa: `docker compose up -d` (không chỉ `restart`).
 
 Hoặc copy tar từ máy đã build:
 
@@ -197,7 +231,7 @@ Restart sau khi sửa profile: `docker compose restart dsh`.
 | Biến | Deploy máy khác |
 |---|---|
 | `DSH_IMAGE` | tag Hub hoặc tag `docker load` |
-| `DSH_HOST_ROOT` / `DSH_HOST_PATH_MAP` | path máy này |
+| `DSH_HOST_ROOT` / `DSH_WORKSPACE_HOST` / `DSH_HOST_PATH_MAP` | path máy này; extra bind → override.yml |
 | `DSH_SOURCE_OVERLAY` | `0` |
 | `DSH_COMMIT_HASH` | chỉ khi `compose build` |
 
@@ -213,6 +247,7 @@ Ghi đè row cùng `id` của bundle. `package.json` profile do DSH tạo lúc c
 | `skill-badge` | bật |
 | `browser-use` + `browser-use-chrome-devtools-mcp` | bật launch Chromium |
 | `workflow-ptc` + `tool-workflow` | comment = theo preset |
+| `ui-settings-models` | `catalogAdd: false` ẩn **Add provider**; `true` để bật lại (restart DSH) |
 | `ui-schedule` | web bundle tắt; `disabled: false` để bật |
 
 ### Egress
@@ -225,7 +260,16 @@ Ghi đè row cùng `id` của bundle. `package.json` profile do DSH tạo lúc c
 
 ### Credential (không commit)
 
-Volume `dsh-credentials` → `/credentials/.credentials.yaml`.
+Ghi key vào `.env` của compose (inject vào container). Tên biến **trùng** `apiKeyEnv` trên Models, ví dụ OpenAI → `OPENAI_API_KEY`, custom provider → đúng tên field API key.
+
+```env
+OPENAI_API_KEY=sk-...
+DEEPSEEK_API_KEY=sk-...
+```
+
+Sau khi sửa key: `docker compose up -d` (`restart` không đọc lại `.env`).
+
+Key nhập trên Models nằm ở `data/.credentials.yaml` (bind mount, gitignore). Entrypoint **không** xóa file này khi restart.
 
 ```powershell
 docker cp .\local-credentials.yaml deepseek-harness:/credentials/.credentials.yaml
@@ -255,7 +299,47 @@ Telemetry luôn tắt: `DSH_TELEMETRY_DISABLED=1`.
 
 ---
 
-## 8. Lệnh thường dùng
+## 8. `.env` không ăn — kiểm tra này trước
+
+Compose **có** đọc file `.env` ở **thư mục repo** (cùng `docker-compose.yml`), nhưng:
+
+1. **`docker compose restart` không đọc lại `.env`.** Container giữ env lúc tạo. Sau khi sửa `.env`:
+
+```powershell
+cd D:\project\dsh-docker
+docker compose up -d
+```
+
+Nếu vẫn cũ: `docker compose up -d --force-recreate`.
+
+2. **Biến shell thắng `.env`.** PowerShell `$env:DSH_IMAGE=...` sẽ đè file. Xóa: `Remove-Item Env:DSH_IMAGE`.
+
+3. **Chạy compose đúng thư mục.** `docker compose` tìm `.env` theo project dir, không theo chỗ bạn ngồi nếu `-f` file ở chỗ khác mà không `--project-directory`.
+
+4. **`DSH_HOST_ROOT` trước đây không được compose dùng** (chỉ PATH_MAP vào container). Bản compose hiện tại: nếu không set `DSH_HOST_PATH_MAP` thì map mặc định từ `DSH_HOST_ROOT`.
+
+5. Kiểm tra giá trị thật:
+
+```powershell
+docker compose config | Select-String "DSH_|image:"
+docker compose exec dsh printenv DSH_HOST_PATH_MAP
+docker compose exec dsh printenv DSH_SOURCE_OVERLAY
+```
+
+6. File `.env` phải UTF-8 (không UTF-16). Không dùng `Out-File`; dùng `Copy-Item .env.example .env`.
+
+### Squid 503 trên domain đã allow
+
+Đó **không** phải allowlist (deny là **403**). 503 sau một lúc rồi hết khi restart thường là DNS IPv6 treo. Compose tắt IPv6 trên Squid; resolver là Docker `127.0.0.11` (DNS máy host, không 1.1.1.1/8.8.8.8). Áp dụng:
+
+```powershell
+docker compose up -d --force-recreate egress-proxy
+docker compose logs -f egress-proxy
+```
+
+---
+
+## 9. Lệnh thường dùng
 
 ```powershell
 docker compose up -d --pull never

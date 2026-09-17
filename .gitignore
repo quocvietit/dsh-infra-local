@@ -23,6 +23,9 @@ workspace/
 # Nested harness clone (own git remote)
 deepseek-harness/
 
+# Local extra bind mounts (copy from docker-compose.override.example.yml)
+docker-compose.override.yml
+
 # Local scratch
 script.txt
 .env

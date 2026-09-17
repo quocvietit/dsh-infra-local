@@ -20,6 +20,20 @@
 - id: skill-badge
   disabled: false
 
+# Hide Send/Submit feedback: slash /feedback, Like/Dislike, and the dialog.
+- id: ui-message-feedback
+  disabled: true
+- id: command-feedback
+  disabled: true
+- id: message-feedback
+  disabled: true
+
+# Settings → Models "Add provider" (catalog OpenAI/Anthropic/…). Off by default;
+# only "Add a custom provider" shows. Set catalogAdd: true and restart DSH to restore.
+- id: ui-settings-models
+  config:
+    catalogAdd: false
+
 # ── Workflow (optional) ─────────────────────────────────────────────────────
 # Uncomment both rows to turn off workflow on this deployment:
 # - id: workflow-ptc
