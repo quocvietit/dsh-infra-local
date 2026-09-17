@@ -395,19 +395,6 @@ fi
 
 
 # ==================================================
-# Baked Vision Toolkit -> web profile (survives /data bind mount)
-# ==================================================
-if [ "${DSH_VISION_TOOLKIT:-1}" != "0" ] && [ -f /opt/dsh-plugins/node_modules/@anionex/dsh-vision-toolkit/package.json ]; then
-  mkdir -p /data/profiles/web/node_modules/@anionex
-  ensure_writable /data/profiles/web /opt/dsh-plugins/node_modules/@anionex/dsh-vision-toolkit
-  node /usr/local/bin/dsh-ensure-vision-toolkit.mjs
-  if [ -f /usr/local/bin/dsh-hide-vision-updates.mjs ]; then
-    node /usr/local/bin/dsh-hide-vision-updates.mjs
-  fi
-fi
-
-
-# ==================================================
 # Run DSH as non-root
 # ==================================================
 

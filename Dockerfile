@@ -38,7 +38,22 @@ RUN apt-get update \
         python3-venv \
         python3-pip \
         python3-dev \
-    && rm -rf /var/lib/apt/lists/*
+        chromium \
+        fonts-liberation \
+        fonts-noto-core \
+        libnss3 \
+        libatk-bridge2.0-0 \
+        libdrm2 \
+        libxkbcommon0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxrandr2 \
+        libgbm1 \
+        libasound2 \
+        libpangocairo-1.0-0 \
+        libgtk-3-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && test -x /usr/bin/chromium
 
 RUN npm install -g pnpm@11.7.0 \
     && pnpm --version
@@ -72,24 +87,10 @@ COPY --from=builder \
     /build/dsh \
     /opt/dsh
 
-# Profile plugin (not in the harness lockfile). Bind-mounted /data is wired
-# to this tree at container start.
-ARG DSH_VISION_TOOLKIT_VERSION=0.1.45
-RUN mkdir -p /opt/dsh-plugins \
-    && cd /opt/dsh-plugins \
-    && printf '%s\n' '{"name":"dsh-plugins","private":true}' > package.json \
-    && pnpm add "@anionex/dsh-vision-toolkit@${DSH_VISION_TOOLKIT_VERSION}" \
-    && chown -R dsh:dsh /opt/dsh-plugins \
-    && test -f /opt/dsh-plugins/node_modules/@anionex/dsh-vision-toolkit/package.json
-
-RUN pip3 install --break-system-packages --no-cache-dir pillow numpy vtracer
-
 # Entrypoint + runtime lib patches (web token, host-open). Harness source
 # in /opt/dsh is the baked copy; host overlay via /source/dsh is optional.
 COPY entrypoint.sh /usr/local/bin/dsh-entrypoint.sh
 COPY patch-runtime.mjs /usr/local/bin/dsh-patch-runtime.mjs
-COPY ensure-vision-toolkit.mjs /usr/local/bin/dsh-ensure-vision-toolkit.mjs
-COPY hide-vision-updates.mjs /usr/local/bin/dsh-hide-vision-updates.mjs
 
 RUN chmod +x /usr/local/bin/dsh-entrypoint.sh
 

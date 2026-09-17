@@ -40,9 +40,6 @@ services:
 
       DSH_SOURCE_OVERLAY: ${DSH_SOURCE_OVERLAY:-0}
 
-      # 1 = link Vision Toolkit into the web profile. 0 = skip.
-      DSH_VISION_TOOLKIT: ${DSH_VISION_TOOLKIT:-1}
-
       HTTP_PROXY: http://egress-proxy:3128
       HTTPS_PROXY: http://egress-proxy:3128
       http_proxy: http://egress-proxy:3128
@@ -55,7 +52,6 @@ services:
       - ./data:/data
       - ./workspace:/workspace
       - ./entrypoint.sh:/usr/local/bin/dsh-entrypoint.sh:ro
-      - ./hide-vision-updates.mjs:/usr/local/bin/dsh-hide-vision-updates.mjs:ro
       - dsh-credentials:/credentials
 
     networks:

@@ -30,3 +30,17 @@
 # ── Schedule UI (shipped disabled in web bundle) ────────────────────────────
 # - id: ui-schedule
 #   disabled: false
+
+# ── Browser Use (Chrome DevTools MCP) ───────────────────────────────────────
+# Isolated Chromium per live Session. Do not list mcp__chrome-devtools-mcp__*
+# in toolOrder (leave them under <unlisted-tools>).
+# Attach mode allows one Session at a time. Avoid performance_* / lighthouse_audit
+# (CrUX is disabled in the provider; those tools are still not needed here).
+- id: browser-use
+  name: '@deepseek-ai/dsh-browser-use'
+- id: browser-use-chrome-devtools-mcp
+  name: '@deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp'
+  config:
+    mode: launch
+    headless: true
+    executablePath: /usr/bin/chromium

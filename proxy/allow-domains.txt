@@ -11,9 +11,3 @@ api.github.com
 
 # npm nếu runtime cần tải package
 registry.npmjs.org
-
-# Vision toolkit: PyPI / Tencent mirror (first-run venv fallback)
-pypi.org
-files.pythonhosted.org
-pypi.python.org
-mirrors.cloud.tencent.com
