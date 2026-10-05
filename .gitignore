@@ -26,6 +26,10 @@ deepseek-harness/
 # Local extra bind mounts (copy from docker-compose.override.example.yml)
 docker-compose.override.yml
 
+# Host Maven cache (settings.xml is committed; secrets belong in a local copy)
+maven/repository/**
+!maven/repository/.gitkeep
+
 # Local scratch
 script.txt
 .env

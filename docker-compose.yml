@@ -1,6 +1,6 @@
 services:
   dsh:
-    image: ${DSH_IMAGE:-dsh-runtime:1.2.1}
+    image: ${DSH_IMAGE:-dsh-runtime:1.2.3}
 
     build:
       context: .
@@ -64,6 +64,9 @@ services:
       - ${DSH_WORKSPACE_HOST:-./workspace}:/workspace
       - ./entrypoint.sh:/usr/local/bin/dsh-entrypoint.sh:ro
       - dsh-credentials:/credentials
+      # Maven: host ./maven/settings.xml + ./maven/repository (not env vars)
+      - ./maven/repository:/home/dsh/.m2/repository
+      - ./maven/settings.xml:/home/dsh/.m2/settings.xml:ro
 
     networks:
       - sandbox

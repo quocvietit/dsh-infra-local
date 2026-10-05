@@ -1,7 +1,7 @@
 # Build & chạy DSH Docker trên máy khác
 
-Image local: `dsh-runtime:1.2.1`  
-Image Hub: `vietvqworkspace/dsh-web:1.2.1`
+Image local: `dsh-runtime:1.2.3`  
+Image Hub: `vietvqworkspace/dsh-web:1.2.3`
 
 UI: http://127.0.0.1:3080 — lấy URL có `?token=` từ `docker compose logs dsh`.
 
@@ -18,8 +18,8 @@ Ba tài liệu cũ (`README.md` dài, `README_DSH_DEPLOY.md`) dễ lệch compos
 | Cần `deepseek-harness/` | Có — `Dockerfile` COPY vào image | **Không** |
 | Cần Docker Desktop | Có | Có |
 | Node/pnpm trên host | Không (build trong Docker) | Không |
-| Image | `docker compose build` → `dsh-runtime:1.2.1` | `docker pull` / `docker load` |
-| `.env` `DSH_IMAGE` | `dsh-runtime:1.2.1` | tag Hub hoặc tag đã load |
+| Image | `docker compose build` → `dsh-runtime:1.2.3` | `docker pull` / `docker load` |
+| `.env` `DSH_IMAGE` | `dsh-runtime:1.2.3` | tag Hub hoặc tag đã load |
 | `DSH_SOURCE_OVERLAY` | `0` (prod) hoặc `1` + compose.dev | **luôn `0`** |
 | Sửa path | `DSH_HOST_ROOT` / `DSH_HOST_PATH_MAP` | **bắt buộc** đổi sang ổ đĩa máy này |
 
@@ -65,7 +65,7 @@ New-Item -ItemType Directory -Force workspace | Out-Null
 Sửa `.env` (Windows: dùng `/`, đúng ổ máy này):
 
 ```env
-DSH_IMAGE=vietvqworkspace/dsh-web:1.2.1
+DSH_IMAGE=vietvqworkspace/dsh-web:1.2.3
 DSH_HOST_ROOT=D:/path/tren/may-nay/dsh-docker
 DSH_SOURCE_OVERLAY=0
 ```
@@ -73,7 +73,7 @@ DSH_SOURCE_OVERLAY=0
 Code **không** nằm trong `./workspace` — xem mục 3.1.
 
 ```powershell
-docker pull vietvqworkspace/dsh-web:1.2.1
+docker pull vietvqworkspace/dsh-web:1.2.3
 docker pull alpine/socat:latest
 docker pull ubuntu/squid:latest
 docker compose up -d --pull never
@@ -119,11 +119,11 @@ Hoặc copy tar từ máy đã build:
 
 ```powershell
 # máy nguồn
-docker save dsh-runtime:1.2.1 alpine/socat:latest ubuntu/squid:latest -o dsh-stack.tar
+docker save dsh-runtime:1.2.3 alpine/socat:latest ubuntu/squid:latest -o dsh-stack.tar
 
 # máy đích
 docker load -i dsh-stack.tar
-# trong .env: DSH_IMAGE=dsh-runtime:1.2.1
+# trong .env: DSH_IMAGE=dsh-runtime:1.2.3
 docker compose up -d --pull never
 ```
 
@@ -165,7 +165,7 @@ git clone <fork-harness> deepseek-harness
 # checkout nhánh đã patch
 
 $env:DSH_COMMIT_HASH = (git -C .\deepseek-harness rev-parse --short HEAD)
-$env:DSH_IMAGE = "dsh-runtime:1.2.1"
+$env:DSH_IMAGE = "dsh-runtime:1.2.3"
 Copy-Item .env.example .env   # nếu chưa có; sửa DSH_HOST_*
 docker compose build
 docker compose up -d
@@ -176,8 +176,8 @@ Build stage: `pnpm install --frozen-lockfile` + `pnpm run build` trong image. Ru
 Đẩy Hub:
 
 ```powershell
-docker tag dsh-runtime:1.2.1 vietvqworkspace/dsh-web:1.2.1
-docker push vietvqworkspace/dsh-web:1.2.1
+docker tag dsh-runtime:1.2.3 vietvqworkspace/dsh-web:1.2.3
+docker push vietvqworkspace/dsh-web:1.2.3
 ```
 
 Sửa harness **không** rebuild image (dev):
@@ -230,10 +230,15 @@ Restart sau khi sửa profile: `docker compose restart dsh`.
 
 | Biến | Deploy máy khác |
 |---|---|
-| `DSH_IMAGE` | tag Hub hoặc tag `docker load` |
+| `DSH_IMAGE` | **1.2.3** local `dsh-runtime:1.2.3` hoặc Hub `vietvqworkspace/dsh-web:1.2.3` |
 | `DSH_HOST_ROOT` / `DSH_WORKSPACE_HOST` / `DSH_HOST_PATH_MAP` | path máy này; extra bind → override.yml |
 | `DSH_SOURCE_OVERLAY` | `0` |
 | `DSH_COMMIT_HASH` | chỉ khi `compose build` |
+| `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` | **không bắt buộc** — chỉ khi inject key từ compose `.env` (trùng `apiKeyEnv`) |
+
+**1.2.3 không thêm biến `.env` mới so với 1.2.1.** Java/Maven nằm trong image (`JAVA_HOME` = JDK 21, `JAVA17_HOME` / `JAVA21_HOME`, `MAVEN_CONFIG=/home/dsh/.m2`). Đổi JDK trong lệnh agent: `use-java17` / `use-java21`. Cache Maven bind `./maven/repository` + `./maven/settings.xml` (không dùng biến môi trường).
+
+Optional LLM keys already listed in `.env.example` (commented). After editing keys: `docker compose up -d` (`restart` does not reread `.env`).
 
 ### `data/profiles/web/cordis.patch.yml`
 
@@ -287,13 +292,14 @@ User trong image là `dsh` (không phải `node` trừ fallback entrypoint).
 2. `.env` path và `DSH_IMAGE` đúng máy này.
 3. `DSH_SOURCE_OVERLAY=0`.
 4. `mkdir workspace` nếu chưa có.
-5. Image có Chromium nếu dùng Browser Use (`docker compose exec dsh test -x /usr/bin/chromium`).
-6. `proxy/allow-domains.txt` đủ domain LLM / web nội bộ.
-7. `cordis.patch.yml` đúng bật/tắt.
-8. `docker compose up -d --pull never` sau khi image đã có local.
-9. Mở URL **có token**; hard-refresh browser.
-10. `.\security-test.ps1` — allow / block / `--noproxy` phải fail.
-11. Session chat **mới** để Browser Use.
+5. `maven/settings.xml` là **file** (compose bind Maven; Docker Desktop tạo thư mục nếu file thiếu).
+6. Image có Chromium nếu dùng Browser Use (`docker compose exec dsh test -x /usr/bin/chromium`).
+7. `proxy/allow-domains.txt` đủ domain LLM / web nội bộ.
+8. `cordis.patch.yml` đúng bật/tắt.
+9. `docker compose up -d --pull never` sau khi image đã có local.
+10. Mở URL **có token**; hard-refresh browser.
+11. `.\security-test.ps1` — allow / block / `--noproxy` phải fail.
+12. Session chat **mới** để Browser Use.
 
 Telemetry luôn tắt: `DSH_TELEMETRY_DISABLED=1`.
 

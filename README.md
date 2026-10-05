@@ -6,8 +6,8 @@ Môi trường chạy DSH trong Docker Desktop: **không Internet trực tiếp*
 
 | Image | Khi nào |
 |---|---|
-| `dsh-runtime:1.2.1` | Build local (`docker compose build`) |
-| `vietvqworkspace/dsh-web:1.2.1` | Máy khác pull Hub (đặt `DSH_IMAGE` trong `.env`) |
+| `dsh-runtime:1.2.3` | Build local (`docker compose build`) |
+| `vietvqworkspace/dsh-web:1.2.3` | Máy khác pull Hub (đặt `DSH_IMAGE` trong `.env`) |
 
 UI chỉ bind localhost: [http://127.0.0.1:3080](http://127.0.0.1:3080) — URL phải có `?token=` (xem log `dsh`).
 

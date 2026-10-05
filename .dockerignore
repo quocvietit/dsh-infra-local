@@ -28,3 +28,8 @@ deepseek-harness/**/.next
 
 deepseek-harness/coverage
 deepseek-harness/**/coverage
+
+deepseek-harness/**/*_BACKUP_*
+deepseek-harness/**/*_BASE_*
+deepseek-harness/**/*_LOCAL_*
+deepseek-harness/**/*_REMOTE_*
