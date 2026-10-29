@@ -56,13 +56,13 @@ RUN rm -rf \
 #   docker exec -it deepseek-harness sh -c \
 #     'DSH_HOME=/data pnpm --dir /opt/dsh dsh plugin --profile web add github:apcamargo/dsh-review'
 RUN DSH_HOME=/build/dsh-profile \
-        pnpm --dir /build/dsh dsh plugin --profile web add dshmarket && \
-    DSH_HOME=/build/dsh-profile \
         pnpm --dir /build/dsh dsh plugin --profile web add "@contexera/dsh-agent-team@0.2.5" && \
     DSH_HOME=/build/dsh-profile \
         pnpm --dir /build/dsh dsh plugin --profile web add dsh-mnemon && \
     DSH_HOME=/build/dsh-profile \
-        pnpm --dir /build/dsh dsh plugin --profile web add "@weibaohui/skills-management"
+        pnpm --dir /build/dsh dsh plugin --profile web add "@weibaohui/skills-management" && \
+    DSH_HOME=/build/dsh-profile \
+        pnpm --dir /build/dsh dsh plugin --profile web add dsh-wallpaper-engine
 
 # =========================
 # Stage 1.1: JDK 17
