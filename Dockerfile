@@ -44,6 +44,26 @@ RUN rm -rf \
     docs \
     examples
 
+# Pre-install community plugins into a seed profile baked into the image.
+# DSH_HOME is overridden to a build-time path so the install does not touch
+# the runtime /data volume.  On first container boot entrypoint.sh copies
+# this seed to /data/profiles/web/ when the profile has not been created yet.
+#
+# github:apcamargo/dsh-review is intentionally excluded here: pnpm blocks
+# prepare scripts for git-hosted packages by default, and the package name
+# required for allowBuilds is unknown at build time.  Install it once at
+# runtime via:
+#   docker exec -it deepseek-harness sh -c \
+#     'DSH_HOME=/data pnpm --dir /opt/dsh dsh plugin --profile web add github:apcamargo/dsh-review'
+RUN DSH_HOME=/build/dsh-profile \
+        pnpm --dir /build/dsh dsh plugin --profile web add dshmarket && \
+    DSH_HOME=/build/dsh-profile \
+        pnpm --dir /build/dsh dsh plugin --profile web add "@contexera/dsh-agent-team@0.2.5" && \
+    DSH_HOME=/build/dsh-profile \
+        pnpm --dir /build/dsh dsh plugin --profile web add dsh-mnemon && \
+    DSH_HOME=/build/dsh-profile \
+        pnpm --dir /build/dsh dsh plugin --profile web add "@weibaohui/skills-management"
+
 # =========================
 # Stage 1.1: JDK 17
 # =========================
@@ -159,6 +179,13 @@ COPY --from=builder \
     --chown=dsh:dsh \
     /build/dsh \
     /opt/dsh
+
+# Baked community-plugin seed: copied to /data/profiles/web/ on first boot
+# by entrypoint.sh when the profile has not been created yet.
+COPY --from=builder \
+    --chown=dsh:dsh \
+    /build/dsh-profile/profiles/web \
+    /opt/dsh-plugins-seed/web
 
 # =========================
 # Java helper commands

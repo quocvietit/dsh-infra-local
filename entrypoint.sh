@@ -396,6 +396,20 @@ fi
 
 
 # ==================================================
+# Seed community plugins on first boot
+# ==================================================
+# If the web profile has not been created yet AND the image contains a pre-baked
+# seed, copy it so the plugins are available without a network call.
+# This runs as root; chown hands ownership to APP_USER afterwards.
+if [ ! -f /data/profiles/web/package.json ] && [ -d /opt/dsh-plugins-seed/web ]; then
+  echo "dsh-entrypoint: seeding community plugins from image..."
+  mkdir -p /data/profiles
+  cp -r /opt/dsh-plugins-seed/web /data/profiles/web
+  chown -R "${APP_USER}:${APP_USER}" /data/profiles/web 2>/dev/null || true
+fi
+
+
+# ==================================================
 # Run DSH as non-root
 # ==================================================
 
