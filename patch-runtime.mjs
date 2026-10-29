@@ -191,4 +191,57 @@ async function chmodIfSupported(path: string, mode: number): Promise<void> {
   return next.replace(importLine, `${importLine}${helper}`)
 })
 
-console.log('dsh-entrypoint: patched web token + host-open + attachment chmod')
+// Same reason: the web launch token lives in src/browser-auth.ts at runtime.
+const browserAuth = '/opt/dsh/packages/client/connection/src/browser-auth.ts'
+patch(browserAuth, (source) => {
+  if (source.includes('DSH_WEB_LAUNCH_TOKEN_FILE')) return source
+  const nodeImport = "import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'\n"
+  const start = source.indexOf('function processLaunchToken(owner: object): string {')
+  const end = source.indexOf('function header(', start)
+  if (!source.includes(nodeImport) || start === -1 || end === -1) {
+    throw new Error('browser-auth launch token anchors not found')
+  }
+  const replacement = String.raw`function persistedLaunchTokenPath(): string | undefined {
+  const explicit = process.env.DSH_WEB_LAUNCH_TOKEN_FILE
+  if (explicit !== undefined && explicit !== '') return explicit
+  const home = process.env.DSH_HOME
+  if (home !== undefined && home !== '') return join(home, '.web-launch-token')
+  return undefined
+}
+
+function isLaunchToken(value: string): boolean {
+  const decoded = decodeBase64Url(value)
+  return decoded !== undefined && decoded.byteLength === SECRET_BYTES
+}
+
+function processLaunchToken(owner: object): string {
+  const existing = PROCESS_LAUNCH_TOKENS.get(owner)
+  if (existing !== undefined) return existing
+  const fromEnv = process.env.DSH_WEB_LAUNCH_TOKEN?.trim()
+  let token = fromEnv !== undefined && isLaunchToken(fromEnv) ? fromEnv : undefined
+  const file = persistedLaunchTokenPath()
+  if (token === undefined && file !== undefined) {
+    try {
+      const stored = readFileSync(file, 'utf8').trim()
+      if (isLaunchToken(stored)) token = stored
+    } catch {}
+  }
+  if (token === undefined) token = encodeBase64Url(randomBytes(SECRET_BYTES))
+  if (file !== undefined) {
+    try {
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, token + '\n', { encoding: 'utf8', mode: 0o600 })
+    } catch {}
+  }
+  PROCESS_LAUNCH_TOKENS.set(owner, token)
+  return token
+}
+
+`
+  const imports = nodeImport
+    + "import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'\n"
+    + "import { dirname, join } from 'node:path'\n"
+  return (source.slice(0, start) + replacement + source.slice(end)).replace(nodeImport, imports)
+})
+
+console.log('dsh-entrypoint: patched web token + host-open + attachment chmod + web token (src)')
