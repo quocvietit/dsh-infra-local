@@ -154,6 +154,10 @@ services:
     cap_drop:
       - ALL
 
+    cap_add:
+      - SETUID
+      - SETGID
+
     deploy:
       resources:
         limits:
