@@ -1,12 +1,12 @@
-# Internal IP/CIDR destinations — all ports allowed through the proxy.
-# Format: one entry per line.
-#   Single IP:   192.168.1.50
-#   CIDR block:  10.0.0.0/8
-#   IP range:    172.16.0.1-172.16.0.254
+# Internal destinations — all ports allowed through the proxy.
+# One IP per line (no CIDR), e.g.:
+#   10.0.0.1
+#   10.0.0.2
 #
-# DNS note: if you use a hostname in CONNECT (e.g. CONNECT host:8080),
-# Squid resolves it and checks the resulting IP against these entries.
-# A DNS failure will block the request even if the IP would match.
-# Use bare IPs in CONNECT, or add the domain to allow-domains.txt instead.
+# DNS note: if a client uses a hostname in CONNECT, Squid resolves it and checks
+# the resulting IP against these entries. A DNS failure blocks the request.
+# Use bare IPs, or add the domain to allow-domains.txt instead.
 #
-# Add your internal network ranges below:
+# 192.0.2.1 is a reserved documentation address (TEST-NET-1, never routable).
+# It only keeps this ACL non-empty so Squid does not warn; replace or keep it.
+192.0.2.1
