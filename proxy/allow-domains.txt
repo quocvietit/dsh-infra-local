@@ -1,13 +1,13 @@
 # DeepSeek API
 api.deepseek.com
-api.openai.com
 
-# Local/company gateway
-llm.company.internal
+# Maven Central — cần để mvn download dependency khi repository chưa có đủ JAR.
+# Xóa dòng này nếu Maven repo đã đủ và bạn muốn chạy offline hoàn toàn.
+repo1.maven.org
+repo.maven.apache.org
+central.sonatype.com
 
-# GitHub nếu agent thật sự cần
-github.com
-api.github.com
-
-# npm nếu runtime cần tải package
+# npm nếu runtime cần tải package.
+# CẢNH BÁO: cho phép AI download npm package tùy ý — xóa nếu không cần thiết
+# hoặc nếu Maven repo đã bao gồm mọi dep cần thiết.
 registry.npmjs.org

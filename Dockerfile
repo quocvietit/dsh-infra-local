@@ -1,13 +1,21 @@
 # =========================
 # Stage 1: Build DSH
 # =========================
-FROM node:24-bookworm AS builder
+FROM node:26-bookworm AS builder
 
+# build-essential + musl-tools: required to compile native C binaries
+#   - flock      (Node-API addon, glibc + musl variants)
+#   - landlock-run (static musl executable)
+# Node headers are available at /usr/local/include/node in node:26-bookworm
 RUN apt-get update \
-    && apt-get install -y git ca-certificates \
+    && apt-get install -y \
+        git \
+        ca-certificates \
+        build-essential \
+        musl-tools \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g pnpm@11.7.0 \
+RUN npm install -g pnpm@11.28.5 \
     && pnpm --version
 
 WORKDIR /build/dsh
@@ -19,7 +27,22 @@ COPY deepseek-harness/ /build/dsh/
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm run build
-RUN test -f pnpm-lock.yaml
+# Disable TTY-dependent purge prompt and dep verification for non-interactive
+# container runtime (entrypoint runs pnpm without a TTY).
+RUN pnpm config set confirmModulesPurge false --location project \
+    && pnpm config set verifyDepsBeforeRun false --location project
+
+# Xóa các thư mục chỉ cần lúc compile/type-check, không cần trong runtime image.
+# - desktop apps: tsconfig.host.json reference, nhưng web mode không dùng
+# - snapshots/website/scripts: scripts/*.spec.ts reference chúng trong host aggregate check
+# Làm ở đây (builder stage) nên COPY --from=builder sang runtime sẽ không copy chúng.
+RUN rm -rf \
+    apps/desktop \
+    apps/desktop-host \
+    apps/plugin-market-generator \
+    snapshots \
+    docs \
+    examples
 
 # =========================
 # Stage 1.1: JDK 17
@@ -34,12 +57,20 @@ FROM eclipse-temurin:21-jdk AS jdk21
 
 
 # =========================
+# Stage 1.3: Maven
+# Dùng image chính thức thay vì curl — không cần network trong RUN,
+# tránh apt kéo thêm openjdk-17-jdk-headless (~400 MB) thừa.
+# =========================
+FROM maven:3.9-eclipse-temurin-21 AS maven-dist
+
+
+# =========================
 # Stage 2: Runtime
 # =========================
-FROM node:24-bookworm
+FROM node:26-bookworm-slim
 
 RUN apt-get update \
-    && apt-get install -y \
+    && apt-get install -y --no-install-recommends \
         git \
         curl \
         ca-certificates \
@@ -48,9 +79,7 @@ RUN apt-get update \
         python3 \
         python3-venv \
         python3-pip \
-        python3-dev \
         chromium \
-        maven \
         fonts-liberation \
         fonts-noto-core \
         libnss3 \
@@ -61,12 +90,15 @@ RUN apt-get update \
         libxdamage1 \
         libxrandr2 \
         libgbm1 \
-        libasound2 \
         libpangocairo-1.0-0 \
         libgtk-3-0 \
-    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Maven binary từ official image — không kéo openjdk thừa qua apt.
+COPY --from=maven-dist /usr/share/maven /opt/maven
+RUN ln -s /opt/maven/bin/mvn /usr/local/bin/mvn \
     && test -x /usr/bin/chromium \
-    && test -x /usr/bin/mvn
+    && test -x /usr/local/bin/mvn
 
 # =========================
 # Java 17 + Java 21
@@ -75,7 +107,7 @@ RUN apt-get update \
 COPY --from=jdk17 /opt/java/openjdk /opt/java/jdk17
 COPY --from=jdk21 /opt/java/openjdk /opt/java/jdk21
 
-# Java 21 mặc định
+# Java 21 default
 ENV JAVA17_HOME=/opt/java/jdk17
 ENV JAVA21_HOME=/opt/java/jdk21
 ENV JAVA_HOME=/opt/java/jdk21
@@ -86,21 +118,22 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 # Maven
 # =========================
 
-# Maven mặc định sử dụng:
-# /home/dsh/.m2/settings.xml
-# /home/dsh/.m2/repository
+# Maven config directory: /home/dsh/.m2/settings.xml + /home/dsh/.m2/repository
 ENV MAVEN_CONFIG=/home/dsh/.m2
+ENV MAVEN_HOME=/opt/maven
 
 # =========================
-# Node / PNPM
+# Node / PNPM / CodeGraph
 # =========================
-RUN npm install -g pnpm@11.7.0 \
-    && pnpm --version
+RUN npm install -g pnpm@11.28.5 @colbymchenry/codegraph \
+    && pnpm --version \
+    && codegraph --version \
+    && npm cache clean --force
 
 ENV HOME=/home/dsh
 ENV DSH_HOME=/data
 
-# Tắt telemetry
+# Disable telemetry
 ENV DSH_TELEMETRY_DISABLED=1
 ENV DSH_TELEMETRY_MODE=DISABLED
 
@@ -121,7 +154,7 @@ RUN mkdir -p \
         /workspace \
         /home/dsh
 
-# Copy bản Harness đã install + build sẵn
+# Copy the pre-installed + pre-built harness
 COPY --from=builder \
     --chown=dsh:dsh \
     /build/dsh \
@@ -131,12 +164,11 @@ COPY --from=builder \
 # Java helper commands
 # =========================
 
-# Cho phép:
-#
+# Usage:
 #   use-java17 mvn clean test
 #   use-java21 mvn clean test
 #
-# Không cần source shell nên rất phù hợp cho AI Agent.
+# No shell sourcing needed -- suitable for AI Agents.
 
 RUN printf '%s\n' \
     '#!/bin/bash' \
@@ -154,47 +186,8 @@ RUN printf '%s\n' \
     > /usr/local/bin/use-java21 \
     && chmod +x /usr/local/bin/use-java21
 
-
-# =========================
-# Java / Maven environment check
-# =========================
-
-RUN printf '%s\n' \
-    '#!/bin/bash' \
-    'set -e' \
-    'echo "========================================"' \
-    'echo "Default Java"' \
-    'echo "========================================"' \
-    'java -version' \
-    'echo' \
-    'echo "JAVA_HOME=$JAVA_HOME"' \
-    'echo' \
-    'echo "========================================"' \
-    'echo "Java 17"' \
-    'echo "========================================"' \
-    '/opt/java/jdk17/bin/java -version' \
-    'echo' \
-    'echo "========================================"' \
-    'echo "Java 21"' \
-    'echo "========================================"' \
-    '/opt/java/jdk21/bin/java -version' \
-    'echo' \
-    'echo "========================================"' \
-    'echo "Maven"' \
-    'echo "========================================"' \
-    'mvn -version' \
-    'echo' \
-    'echo "MAVEN_CONFIG=$MAVEN_CONFIG"' \
-    'echo' \
-    'echo "========================================"' \
-    'echo ".m2"' \
-    'echo "========================================"' \
-    'ls -la /home/dsh/.m2 || true' \
-    > /usr/local/bin/java-env \
-    && chmod +x /usr/local/bin/java-env
-
-# Entrypoint + runtime lib patches (web token, host-open). Harness source
-# in /opt/dsh is the baked copy; host overlay via /source/dsh is optional.
+# Entrypoint + runtime lib patches (web token, host-open).
+# Harness source in /opt/dsh is the baked copy; host overlay via /source/dsh is optional.
 COPY entrypoint.sh /usr/local/bin/dsh-entrypoint.sh
 COPY patch-runtime.mjs /usr/local/bin/dsh-patch-runtime.mjs
 
@@ -210,8 +203,6 @@ RUN /opt/java/jdk17/bin/java -version \
     && javac -version \
     && mvn -version
 
-# Entrypoint cần chạy root để chmod/chown credential.
-# Sau đó script sẽ tự chuyển xuống user node.
 USER root
 
 WORKDIR /workspace

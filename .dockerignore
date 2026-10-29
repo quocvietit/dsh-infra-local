@@ -33,3 +33,21 @@ deepseek-harness/**/*_BACKUP_*
 deepseek-harness/**/*_BASE_*
 deepseek-harness/**/*_LOCAL_*
 deepseek-harness/**/*_REMOTE_*
+
+# ── Không bao giờ là TypeScript/JS source — loại khỏi build context ──────────
+# Các file này không bao giờ được tsc hoặc pnpm xử lý nên an toàn để loại.
+deepseek-harness/**/*.md
+deepseek-harness/**/*.zh.md
+deepseek-harness/**/*.i18n.yaml
+deepseek-harness/LICENSE
+deepseek-harness/THIRD_PARTY_NOTICES.md
+deepseek-harness/pytest.ini
+deepseek-harness/lefthook.yml
+
+# TypeScript incremental cache — được sinh lại trong builder, không copy vào
+deepseek-harness/**/*.tsbuildinfo
+
+# ── Những thứ còn lại (snapshots, website, docs, desktop, scripts...) ─────────
+# tsconfig.host.json hoặc scripts/ reference chúng nên GIU trong build context
+# de tsc khong bao loi. Chung bi xoa trong builder stage SAU pnpm run build
+# (xem Dockerfile) nen KHONG co trong runtime image.

@@ -12,20 +12,20 @@ function patch(path, apply) {
 
 const connection = '/opt/dsh/packages/client/connection/lib/index.js'
 patch(connection, (source) => {
-  if (source.includes('DSH_WEB_LAUNCH_TOKEN_FILE')) return source
   let next = source
-  if (!next.includes('from "node:fs"')) {
-    next = next.replace(
-      'import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";',
-      'import { mkdirSync, readFileSync, writeFileSync } from "node:fs";\n'
-      + 'import { dirname, join } from "node:path";\n'
-      + 'import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";',
-    )
-  }
-  const start = next.indexOf('function processLaunchToken(owner) {')
-  const end = next.indexOf('function header(', start)
-  if (start === -1 || end === -1) throw new Error('processLaunchToken not found')
-  const replacement = `function isLaunchToken(value) {
+  if (!next.includes('DSH_WEB_LAUNCH_TOKEN_FILE')) {
+    if (!next.includes('from "node:fs"')) {
+      next = next.replace(
+        'import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";',
+        'import { mkdirSync, readFileSync, writeFileSync } from "node:fs";\n'
+        + 'import { dirname, join } from "node:path";\n'
+        + 'import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";',
+      )
+    }
+    const start = next.indexOf('function processLaunchToken(owner) {')
+    const end = next.indexOf('function header(', start)
+    if (start === -1 || end === -1) throw new Error('processLaunchToken not found')
+    const replacement = `function isLaunchToken(value) {
 	const decoded = decodeBase64Url(value);
 	return decoded !== void 0 && decoded.byteLength === SECRET_BYTES;
 }
@@ -58,7 +58,41 @@ function processLaunchToken(owner) {
 	return token;
 }
 `
-  return `${next.slice(0, start)}${replacement}${next.slice(end)}`
+    next = `${next.slice(0, start)}${replacement}${next.slice(end)}`
+  }
+
+  const oldAutoAuth = 'const authority = requestAudience(req.headers, secure);\n\t\tif (authority !== void 0) {'
+  if (next.includes(oldAutoAuth)) {
+    next = next.replace(oldAutoAuth, 'const authority = requestAudience(req.headers, secure) ?? (url.host || "127.0.0.1:3080");\n\t\tif (true) {')
+  }
+
+  const authTarget = 'if (this.isAuthenticated(req, secure)) return true;\n\t\tthis.writeUnauthorized(req, res);\n\t\treturn false;'
+  if (next.includes(authTarget) && !next.includes('auto-login on plain index')) {
+    const autoAuth = `if (this.isAuthenticated(req, secure)) return true;
+		/* auto-login on plain index without token */
+		const authority = requestAudience(req.headers, secure) ?? (url.host || "127.0.0.1:3080");
+		const issuedAt = Date.now();
+		const expiresAt = issuedAt + this.maxAgeMilliseconds;
+		const value = encodeCookie({
+			version: COOKIE_PAYLOAD_VERSION,
+			authority,
+			issuedAt,
+			expiresAt
+		}, this.secret);
+		res.writeHead(303, {
+			"cache-control": "no-store",
+			"location": "./",
+			"referrer-policy": "no-referrer",
+			"set-cookie": sessionCookie(cookieName(authority), value, expiresAt, Math.floor(this.maxAgeMilliseconds / 1e3), secure)
+		});
+		res.end();
+		return false;
+		this.writeUnauthorized(req, res);
+		return false;`
+    next = next.replace(authTarget, autoAuth)
+  }
+
+  return next
 })
 
 const native = '/opt/dsh/packages/util/native-command/lib/index.js'

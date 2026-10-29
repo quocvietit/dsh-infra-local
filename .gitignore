@@ -10,6 +10,7 @@ data/attachments/
 data/sessions/
 data/storages/
 data/settings.yaml
+data/settings.yaml.imported
 data/projects/payment-service.yml
 data/profiles/**/node_modules/
 data/profiles/web/.dsh-module-fallback/

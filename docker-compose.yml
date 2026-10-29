@@ -1,6 +1,6 @@
 services:
   dsh:
-    image: ${DSH_IMAGE:-dsh-runtime:1.2.3}
+    image: ${DSH_IMAGE:-dsh-web:1.0.0}
 
     build:
       context: .
@@ -62,10 +62,13 @@ services:
       # Other disk / folder: set DSH_WORKSPACE_HOST in .env (absolute, forward slashes).
       # More folders: docker-compose.override.yml (see docker-compose.override.example.yml).
       - ${DSH_WORKSPACE_HOST:-./workspace}:/workspace
-      - ./entrypoint.sh:/usr/local/bin/dsh-entrypoint.sh:ro
-      - dsh-credentials:/credentials
-      # Maven: host ./maven/settings.xml + ./maven/repository (not env vars)
-      - ./maven/repository:/home/dsh/.m2/repository
+      - ./patch-runtime.mjs:/usr/local/bin/dsh-patch-runtime.mjs:ro
+      # - ./entrypoint.sh:/usr/local/bin/dsh-entrypoint.sh:ro
+      # Maven: settings on host (mirrors/credentials), repo in a named Linux volume.
+      # Named volume avoids WSL2 9P overhead that causes Maven to hang under heavy
+      # file I/O on Windows-mounted directories. Delete the volume to clear the cache:
+      #   docker volume rm dsh-docker_maven-repository
+      - maven-repository:/home/dsh/.m2/repository
       - ./maven/settings.xml:/home/dsh/.m2/settings.xml:ro
 
     networks:
@@ -86,8 +89,14 @@ services:
       - SETUID
       - SETGID
 
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "2.0"
+
   web-gateway:
-    image: alpine/socat:latest
+    image: alpine/socat:1.8.1.3
 
     container_name: dsh-web-gateway
 
@@ -107,8 +116,20 @@ services:
     depends_on:
       - dsh
 
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: "0.25"
+
   egress-proxy:
-    image: ubuntu/squid:latest
+    image: ubuntu/squid:6.6-24.04_edge
     container_name: dsh-egress-proxy
 
     restart: unless-stopped
@@ -129,8 +150,17 @@ services:
     security_opt:
       - no-new-privileges:true
 
+    cap_drop:
+      - ALL
+
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
 volumes:
-  dsh-credentials:
+  maven-repository:
 
 networks:
 
