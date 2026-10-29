@@ -384,6 +384,7 @@ if source_overlay_active; then
   wait_for_file "$OPEN_SRC"
 fi
 ensure_writable "$AUTH_DST" "$OPEN_DST" \
+  /opt/dsh/packages/client/connection/src/rpc-host.ts \
   /opt/dsh/packages/client/connection/lib/index.js \
   /opt/dsh/packages/util/native-command/lib/index.js
 if source_overlay_active; then

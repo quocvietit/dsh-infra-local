@@ -2,12 +2,18 @@
  * Patch the runtime image libs for a stable web token and Windows host-open.
  * Idempotent: skips a file that already contains the docker markers.
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, readFileSync, writeFileSync } from 'node:fs'
 
 function patch(path, apply) {
   const source = readFileSync(path, 'utf8')
   const next = apply(source)
-  if (next !== source) writeFileSync(path, next)
+  if (next === source) return
+  try {
+    writeFileSync(path, next)
+  } catch {
+    chmodSync(path, 0o644)
+    writeFileSync(path, next)
+  }
 }
 
 const connection = '/opt/dsh/packages/client/connection/lib/index.js'
@@ -90,6 +96,12 @@ function processLaunchToken(owner) {
 		this.writeUnauthorized(req, res);
 		return false;`
     next = next.replace(authTarget, autoAuth)
+  }
+
+  const rpcBroken = '() => owner.webServer.register(route)'
+  const rpcFixed = "() => owner.get('webServer').register(route)"
+  if (next.includes(rpcBroken) && !next.includes(rpcFixed)) {
+    next = next.replace(rpcBroken, rpcFixed)
   }
 
   return next
@@ -244,4 +256,16 @@ function processLaunchToken(owner: object): string {
   return (source.slice(0, start) + replacement + source.slice(end)).replace(nodeImport, imports)
 })
 
-console.log('dsh-entrypoint: patched web token + host-open + attachment chmod + web token (src)')
+// Plugin RPC 405: Context.webServer is not injected on the reader scope, so
+// connection.rpc.handle() never registers /dsh-mnemon-* (and other plugin
+// channels). POSTs fall through to the SPA and return 405 ("Mnemon is not ready").
+// https://github.com/deepseek-ai/deepseek-harness/discussions/6179
+const rpcHost = '/opt/dsh/packages/client/connection/src/rpc-host.ts'
+patch(rpcHost, (source) => {
+  const broken = '() => owner.webServer.register(route)'
+  const fixed = "() => owner.get('webServer').register(route)"
+  if (!source.includes(broken) || source.includes(fixed)) return source
+  return source.replace(broken, fixed)
+})
+
+console.log('dsh-entrypoint: patched web token + host-open + attachment chmod + plugin rpc webServer')

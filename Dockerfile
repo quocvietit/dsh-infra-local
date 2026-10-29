@@ -62,7 +62,7 @@ RUN DSH_HOME=/build/dsh-profile \
     DSH_HOME=/build/dsh-profile \
         pnpm --dir /build/dsh dsh plugin --profile web add "@weibaohui/skills-management" && \
     DSH_HOME=/build/dsh-profile \
-        pnpm --dir /build/dsh dsh plugin --profile web add dsh-wallpaper-engine
+        pnpm --dir /build/dsh dsh plugin --profile web add dsh-plugin-wallpaper-engine@1.4.0
 
 # =========================
 # Stage 1.1: JDK 17
