@@ -170,4 +170,25 @@ function openViaDockerHost(containerPath, action, signal, env) {
   return next
 })
 
-console.log('dsh-entrypoint: patched web token + host-open')
+// `dsh web` loads this TypeScript source via tsx (not lib/index.js). Docker
+// Desktop bind mounts reject chmod with EPERM, which fails every upload.
+const attachmentStore = '/opt/dsh/packages/attachment/attachment-local/src/store.ts'
+patch(attachmentStore, (source) => {
+  if (source.includes('chmodIfSupported')) return source
+  const importLine = "import { dirname, join, parse, resolve } from 'node:path'\n"
+  if (!source.includes(importLine)) throw new Error('attachment store import anchor not found')
+  const helper = `
+async function chmodIfSupported(path: string, mode: number): Promise<void> {
+  try {
+    await chmod(path, mode)
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && (error.code === 'EPERM' || error.code === 'EACCES' || error.code === 'ENOTSUP')) return
+    throw error
+  }
+}
+`
+  const next = source.replaceAll('await chmod(target,', 'await chmodIfSupported(target,')
+  return next.replace(importLine, `${importLine}${helper}`)
+})
+
+console.log('dsh-entrypoint: patched web token + host-open + attachment chmod')
