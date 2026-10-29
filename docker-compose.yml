@@ -142,6 +142,7 @@ services:
     volumes:
       - ./proxy/squid.conf:/etc/squid/squid.conf:ro
       - ./proxy/allow-domains.txt:/etc/squid/allow-domains.txt:ro
+      - ./proxy/allow-internal.txt:/etc/squid/allow-internal.txt:ro
 
     networks:
       - sandbox
