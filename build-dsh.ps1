@@ -209,6 +209,11 @@ Write-Host ""
 # Node
 # ------------------------------------------------------------
 
+# Native tools (java -version, chromium --version) write to stderr. Under
+# Windows PowerShell 5.1 with "Stop" that becomes a terminating error, so rely
+# on $LASTEXITCODE for this section only.
+$ErrorActionPreference = "Continue"
+
 Write-Host "Checking Node.js..." -ForegroundColor Yellow
 
 $nodeVersion = docker run --rm `
@@ -332,6 +337,8 @@ Write-Host "CodeGraph : OK" -ForegroundColor Green
 # ============================================================
 
 Write-Host ""
+$ErrorActionPreference = "Stop"
+
 Write-Host "Checking image size..." -ForegroundColor Yellow
 
 $imageSize = docker image inspect `
