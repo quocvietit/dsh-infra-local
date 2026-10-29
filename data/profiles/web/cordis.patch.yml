@@ -68,10 +68,19 @@
         models:
           - id: text-embedding-nomic-embed-text-v1.5
             name: text-embedding-nomic-embed-text-v1.5
+            input:
+              - text
+              - image
           - id: qwen-qwen2.5-coder-14b-instruct
             name: qwen-qwen2.5-coder-14b-instruct
+            input:
+              - text
+              - image
           - id: qwen2.5-coder-7b-instruct
             name: qwen2.5-coder-7b-instruct
+            input:
+              - text
+              - image
         apiKeyEnv: LLM_LOCAL_API_KEY
 - id: agent-default-model
   name: "@deepseek-ai/dsh-agent-default-model"
